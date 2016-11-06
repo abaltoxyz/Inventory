@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_inventory"
+    android:layout_width="match_parent"
+    android:background="#fefefe"
+    android:layout_height="match_parent"
+    tools:context="xyz.kbalto.inventory.InventoryActivity">
+
+    <ListView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/products_list" />
+
+    <!-- Empty view for the list -->
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:id="@+id/empty_view"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true">
+
+        <!-- Picture from https://icons8.com/web-app/18891/small-business -->
+        <ImageView
+            android:layout_width="wrap_content"
+            android:id="@+id/empty_view_image"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:src="@drawable/empty_image"/>
+
+        <TextView
+            android:id="@+id/empty_title_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/empty_view_image"
+            android:layout_centerHorizontal="true"
+            android:fontFamily="sans-serif-medium"
+            android:paddingTop="16dp"
+            android:text="@string/empty_view_title_text"
+            android:textAppearance="?android:textAppearanceMedium"/>
+
+        <TextView
+            android:id="@+id/empty_subtitle_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/empty_title_text"
+            android:layout_centerHorizontal="true"
+            android:fontFamily="sans-serif"
+            android:paddingTop="8dp"
+            android:text="@string/empty_view_subtitle_text"
+            android:textAppearance="?android:textAppearanceSmall"
+            android:textColor="#A2AAB0"/>
+
+    </RelativeLayout>
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_margin="16dp"
+        android:src="@drawable/add_icon"/>
+
+</RelativeLayout>

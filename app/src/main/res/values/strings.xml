@@ -1,0 +1,39 @@
+<resources>
+    <string name="app_name">Inventory</string>
+    <string name="empty_view_title_text">There are no products yet</string>
+    <string name="empty_view_subtitle_text">Get started by adding some</string>
+    <string name="sell_button">Sell</string>
+    <string name="name">Name</string>
+    <string name="description">Description</string>
+    <string name="quantity">Quantity</string>
+    <string name="price">Price</string>
+    <string name="total_sales">Total Sales</string>
+    <string name="total_sold">Total Sold</string>
+    <string name="delete_all_products">Delete all products</string>
+    <string name="order_more_products">Order more</string>
+    <string name="delete_product">Delete</string>
+    <string name="no_description">No description available</string>
+    <string name="delete_products_failure">Error with deleting products</string>
+    <string name="delete_products_success">Products deleted</string>
+    <string name="delete_products_message">Delete all products?</string>
+    <string name="delete_product_message">Delete product?</string>
+    <string name="delete_product_failure">Error with deleting product</string>
+    <string name="delete_product_success">Product deleted</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete_no_products_error">There are no products to delete</string>
+    <string name="editor_activity_new_product">New Product</string>
+    <string name="editor_activity_edit_product">Edit Product</string>
+    <string name="discard_changes_message">Discard changes?</string>
+    <string name="discard">Discard</string>
+    <string name="keep_editing">Keep editing</string>
+    <string name="update_product_failure">Error with updating product</string>
+    <string name="update_product_success">Product updated</string>
+    <string name="add_product_failure">Error with adding product</string>
+    <string name="add_product_success">Product added</string>
+    <string name="save">Save</string>
+    <string name="product_name">Product Name</string>
+    <string name="product_description">Product Description</string>
+    <string name="product_price">Price ($)</string>
+
+</resources>
