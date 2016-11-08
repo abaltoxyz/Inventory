@@ -35,5 +35,8 @@
     <string name="product_name">Product Name</string>
     <string name="product_description">Product Description</string>
     <string name="product_price">Price ($)</string>
+    <string name="currency_sign">$</string>
+    <string name="sell_product_message">Add a new sale?</string>
+    <string name="sell_product_confirm">Sell</string>
 
 </resources>

@@ -1,19 +1,33 @@
 package xyz.kbalto.inventory;
 
+import android.Manifest;
+import android.app.Activity;
 import android.app.LoaderManager;
 import android.content.ContentValues;
 import android.content.CursorLoader;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.Loader;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.ParcelFileDescriptor;
+import android.provider.MediaStore;
 import android.support.design.widget.TextInputLayout;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NavUtils;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -24,7 +38,16 @@ import android.widget.NumberPicker;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileDescriptor;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
 import xyz.kbalto.inventory.data.ProductContract.ProductEntry;
+
+import static xyz.kbalto.inventory.data.ProductProvider.LOG_TAG;
 
 /**
  * Allows the user to create a new product or edit an existing one.
@@ -50,6 +73,17 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
     private Uri mCurrentProductUri;
     /** Boolean flag that keeps track of whether the product has been edited (true) or not (false) */
     private boolean mProductHasChanged;
+    private Uri mProductPhotoUri;
+
+    private ImageView mImageViewTakePicture;
+    private static final int MY_PERMISSIONS_REQUEST = 2;
+    private static final String FILE_PROVIDER_AUTHORITY = "xyz.kbalto.inventory.fileprovider";
+    private static final int REQUEST_IMAGE_CAPTURE = 1;
+    private static final String JPEG_FILE_PREFIX = "IMG_";
+    private static final String JPEG_FILE_SUFFIX = ".jpg";
+    private static final String CAMERA_DIR = "/dcim/";
+    private Bitmap mBitmap;
+
 
     /**
      * Listens for any user touches on a View, implying that they are modifying it.
@@ -89,6 +123,17 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         mSoldQuantityView = (TextView) findViewById(R.id.product_sold_quantity);
         mSoldProfitView = (TextView) findViewById(R.id.product_sold_profit);
 
+        mImageViewTakePicture = (ImageView) findViewById(R.id.take_picture);
+        mImageViewTakePicture.setEnabled(false);
+
+        requestPermissions();
+        mImageViewTakePicture.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                takePicture(view);
+            }
+        });
+
         // Set up cool wrapper EditText hints animation. Tutorial from https://code.tutsplus.com/tutorials/creating-a-login-screen-using-textinputlayout--cms-24168
         final TextInputLayout nameWrapper = (TextInputLayout) findViewById(R.id.name_wrapper);
         nameWrapper.setHint(getString(R.string.product_name));
@@ -105,9 +150,139 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         mDescriptionEditText.setOnTouchListener(mTouchListener);
         mQuantityPicker.setOnTouchListener(mTouchListener);
         mPriceEditText.setOnTouchListener(mTouchListener);
-        mProductImage.setOnTouchListener(mTouchListener);
         mSoldQuantityView.setOnTouchListener(mTouchListener);
         mSoldProfitView.setOnTouchListener(mTouchListener);
+    }
+
+    public void requestPermissions(){
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
+            // should we show an explanation?
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE) ||
+                    ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)){
+                // show an explanation asynchronously
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        new String[] {Manifest.permission.READ_EXTERNAL_STORAGE,
+                                    Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        MY_PERMISSIONS_REQUEST);
+            }
+        } else {
+            mImageViewTakePicture.setEnabled(true);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String[] permissions,
+                                           int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                        && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+                    // permissions were granted
+                    mImageViewTakePicture.setEnabled(true);
+                } else {
+                    // permission denied, disable functionality
+                }
+                return;
+            }
+        }
+    }
+
+    public void takePicture(View view) {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        try {
+            File f = createImageFile();
+            Log.d("takePicture()", "File: " + f.getAbsolutePath());
+            mProductPhotoUri = FileProvider.getUriForFile(this, FILE_PROVIDER_AUTHORITY, f);
+            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mProductPhotoUri);
+            // Solution taken from http://stackoverflow.com/a/18332000/3346625
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
+                List<ResolveInfo> resInfoList = getPackageManager().queryIntentActivities(takePictureIntent, PackageManager.MATCH_DEFAULT_ONLY);
+                for (ResolveInfo resolveInfo : resInfoList) {
+                    String packageName = resolveInfo.activityInfo.packageName;
+                    grantUriPermission(packageName, mProductPhotoUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                }
+            }
+
+            if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent resultData) {
+        Log.i(LOG_TAG, "Received an \"Activity Result\"");
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == Activity.RESULT_OK) {
+            Log.i(LOG_TAG, "Uri: " + mProductPhotoUri.toString());
+            mBitmap = getBitmapFromUri(mProductPhotoUri);
+            mProductImage.setImageBitmap(mBitmap);
+        }
+    }
+
+    private Bitmap getBitmapFromUri(Uri uri) {
+        ParcelFileDescriptor parcelFileDescriptor = null;
+        try {
+            parcelFileDescriptor = getContentResolver().openFileDescriptor(uri, "r");
+            FileDescriptor fileDescriptor = parcelFileDescriptor.getFileDescriptor();
+            Bitmap image = BitmapFactory.decodeFileDescriptor(fileDescriptor);
+            parcelFileDescriptor.close();
+            return image;
+        } catch (Exception e){
+            Log.e(LOG_TAG, "Failed to load image", e);
+            return null;
+        } finally {
+            try {
+                if (parcelFileDescriptor != null) {
+                    parcelFileDescriptor.close();
+                }
+            } catch (IOException e){
+                e.printStackTrace();
+                Log.e(LOG_TAG, "Error closing ParcelFile Descriptor");
+            }
+        }
+    }
+
+    private File createImageFile() throws IOException {
+        // create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = JPEG_FILE_PREFIX + timeStamp + "_";
+        File albumF = getAlbumDir();
+        File imageF = File.createTempFile(imageFileName, JPEG_FILE_SUFFIX, albumF);
+        return imageF;
+    }
+
+    private File getAlbumDir() {
+        File storageDir = null;
+
+        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+
+            storageDir = new File(Environment.getExternalStorageDirectory()
+                    + CAMERA_DIR
+                    + getString(R.string.app_name));
+
+            Log.d(LOG_TAG, "Dir: " + storageDir);
+
+            if (storageDir != null) {
+                if (!storageDir.mkdirs()) {
+                    if (!storageDir.exists()) {
+                        Log.d(LOG_TAG, "failed to create directory");
+                        return null;
+                    }
+                }
+            }
+
+        } else {
+            Log.v(getString(R.string.app_name), "External storage is not mounted READ/WRITE.");
+        }
+
+        return storageDir;
     }
 
     /**
@@ -178,8 +353,6 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         if (!TextUtils.isEmpty(priceString)){
             price = Integer.parseInt(priceString);
         }
-        int soldQuantity = 0;
-        int soldProfit = 0;
 
         // Set up the product's ContentValues
         ContentValues productValues = new ContentValues();
@@ -187,8 +360,7 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         productValues.put(ProductEntry.COLUMN_PRODUCT_DESCRIPTION, descriptionString);
         productValues.put(ProductEntry.COLUMN_PRODUCT_QUANTITY, quantity);
         productValues.put(ProductEntry.COLUMN_PRODUCT_PRICE, price);
-        productValues.put(ProductEntry.COLUMN_PRODUCT_SOLD_QUANTITY, soldQuantity);
-        productValues.put(ProductEntry.COLUMN_PRODUCT_SOLD_PROFIT, soldProfit);
+        productValues.put(ProductEntry.COLUMN_PRODUCT_PICTURE, mProductPhotoUri.toString());
 
         // Update or add the product to the database
         if (mCurrentProductUri == null){
@@ -365,21 +537,22 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
             String pictureString = cursor.getString(pictureColumnIndex);
             int soldQuantity = cursor.getInt(soldQuantityColumnIndex);
             int soldProfit = cursor.getInt(soldProfitColumnIndex);
+            Uri pictureUri = Uri.parse(pictureString);
 
             // Update views on the screen.
             mNameEditText.setText(name);
             mDescriptionEditText.setText(description);
             mQuantityPicker.setValue(quantity);
-            //mQuantityEditText.setText(Integer.toString(quantity));
             mPriceEditText.setText(Integer.toString(price));
-            if (pictureString == null || TextUtils.isEmpty(pictureString)){
+            if (mCurrentProductUri == null && pictureString == null || TextUtils.isEmpty(pictureString)){
                 // If the product's image doesn't exist, set placeholder image.
                 mProductImage.setImageResource(R.drawable.placeholder);
             } else {
-                //TODO: set image.
+                mProductImage.setImageURI(pictureUri);
             }
             mSoldQuantityView.setText(Integer.toString(soldQuantity));
-            mSoldProfitView.setText(Integer.toString(soldProfit));
+            String soldProfitWithCurrency = getString(R.string.currency_sign) + Integer.toString(soldProfit);
+            mSoldProfitView.setText(soldProfitWithCurrency);
         }
 
     }

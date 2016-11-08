@@ -100,6 +100,8 @@ public class InventoryActivity extends AppCompatActivity implements LoaderManage
         alertDialog.show();
     }
 
+
+
     /**
      * Deletes all products from the database.
      */
@@ -155,7 +157,9 @@ public class InventoryActivity extends AppCompatActivity implements LoaderManage
                 ProductEntry.COLUMN_PRODUCT_NAME,
                 ProductEntry.COLUMN_PRODUCT_DESCRIPTION,
                 ProductEntry.COLUMN_PRODUCT_PRICE,
-                ProductEntry.COLUMN_PRODUCT_QUANTITY
+                ProductEntry.COLUMN_PRODUCT_QUANTITY,
+                ProductEntry.COLUMN_PRODUCT_SOLD_QUANTITY,
+                ProductEntry.COLUMN_PRODUCT_SOLD_PROFIT
         };
         return new CursorLoader(this,
                 ProductEntry.CONTENT_URI,       // Content URI to query

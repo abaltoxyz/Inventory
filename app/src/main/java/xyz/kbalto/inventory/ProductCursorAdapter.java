@@ -3,10 +3,11 @@ package xyz.kbalto.inventory;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.database.Cursor;
 import android.net.Uri;
+import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,6 +24,11 @@ import xyz.kbalto.inventory.data.ProductContract.ProductEntry;
 
 
 public class ProductCursorAdapter extends CursorAdapter {
+    private int mProductId;
+    private int mProductQuantity;
+    private int mProductSoldQuantity;
+    private int mProductSoldProfit;
+    private int mProductPrice;
 
     /** Superclass constructor
      */
@@ -51,28 +57,26 @@ public class ProductCursorAdapter extends CursorAdapter {
         TextView priceView = (TextView) view.findViewById(R.id.item_product_price);
 
         // Find the columns of product attributes that we're interested in
-        int idColumnIndex= cursor.getColumnIndexOrThrow(ProductEntry._ID);
+        int idColumnIndex= cursor.getColumnIndex(ProductEntry._ID);
         int nameColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_NAME);
         int imageColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_PICTURE);
         int descriptionColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_DESCRIPTION);
         int quantityColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_QUANTITY);
         int priceColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_PRICE);
-        int soldQuantityColumnIndex = cursor.getColumnIndexOrThrow(ProductEntry.COLUMN_PRODUCT_SOLD_QUANTITY);
-        int soldProfitColumnIndex = cursor.getColumnIndexOrThrow(ProductEntry.COLUMN_PRODUCT_SOLD_PROFIT);
-
-        Log.i("bindView", "priceColumnIndex= " + priceColumnIndex);
-        Log.i("bindView", "soldQuantityColumnIndex= " + soldQuantityColumnIndex);
-        Log.i("bindView", "soldProfitColumnIndex= " + soldProfitColumnIndex);
+        int soldQuantityColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_SOLD_QUANTITY);
+        int soldProfitColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_SOLD_PROFIT);
 
         // Read attributes from the cursor for the current product
-        final int productId = cursor.getInt(idColumnIndex);
+        //final int productId = cursor.getInt(idColumnIndex);
+        mProductId = cursor.getInt(idColumnIndex);
         String productName = cursor.getString(nameColumnIndex);
         String productImage = cursor.getString(imageColumnIndex);
         String productDescription = cursor.getString(descriptionColumnIndex);
-        final int productQuantity = cursor.getInt(quantityColumnIndex);
-        final int productPrice = cursor.getInt(priceColumnIndex);
-        final int productSoldQuantity = cursor.getInt(soldQuantityColumnIndex);
-        final int productSoldProfit = cursor.getInt(soldProfitColumnIndex);
+        //final int productQuantity = cursor.getInt(quantityColumnIndex);
+        mProductQuantity = cursor.getInt(quantityColumnIndex);
+        mProductPrice = cursor.getInt(priceColumnIndex);
+        mProductSoldQuantity = cursor.getInt(soldQuantityColumnIndex);
+        mProductSoldProfit = cursor.getInt(soldProfitColumnIndex);
 
         // Populate fields with extracted properties
         nameView.setText(productName);
@@ -90,27 +94,57 @@ public class ProductCursorAdapter extends CursorAdapter {
             // Otherwise, set correct description
             descriptionView.setText(productDescription);
         }
-        quantityView.setText(Integer.toString(productQuantity));
-        priceView.setText(Integer.toString(productPrice));
+        quantityView.setText(Integer.toString(mProductQuantity));
+        priceView.setText(Integer.toString(mProductPrice));
 
         Button sellButton = (Button) view.findViewById(R.id.sell_button);
         sellButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                ContentValues values  = new ContentValues();
-                if (productQuantity > 0){
-                    Integer itemId = productId;
-                    Integer newProductQuantity = productQuantity - 1;
-                    Integer newProductSold = productSoldQuantity + 1;
-                    Integer newProductProfit = (productSoldProfit + 1) * productPrice;
-                    values.put(ProductEntry.COLUMN_PRODUCT_QUANTITY, newProductQuantity);
-                    values.put(ProductEntry.COLUMN_PRODUCT_SOLD_QUANTITY, newProductSold);
-                    values.put(ProductEntry.COLUMN_PRODUCT_SOLD_PROFIT, newProductProfit);
-                    Uri currentProductUri = ContentUris.withAppendedId(ProductEntry.CONTENT_URI, itemId);
-                    context.getContentResolver().update(currentProductUri, values, null, null);
-                }
-                context.getContentResolver().notifyChange(ProductEntry.CONTENT_URI, null);
+                showSellConfirmationDialog(context);
             }
         });
+    }
+
+    /**
+     * Shows confirmation dialog when adding a new sale.
+     */
+    private void showSellConfirmationDialog(final Context context){
+        // Set up the dialog
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setMessage(R.string.sell_product_message);
+        builder.setPositiveButton(R.string.sell_product_confirm, new DialogInterface.OnClickListener(){
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                // User confirmed the sale.
+                sellProduct(context);
+            }
+        });
+        builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                if (dialogInterface != null){
+                    dialogInterface.dismiss();
+                }
+            }
+        });
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+    }
+
+    /**
+     * Handles a product sale. Updates the product's quantity, sold quantity and sold profit.
+     */
+    private void sellProduct(final Context context){
+        ContentValues values = new ContentValues();
+        int newProductQuantity = mProductQuantity - 1;
+        int newProductSold = mProductSoldQuantity + 1;
+        int newProductProfit = mProductSoldProfit + mProductPrice;
+        values.put(ProductEntry.COLUMN_PRODUCT_QUANTITY, newProductQuantity);
+        values.put(ProductEntry.COLUMN_PRODUCT_SOLD_QUANTITY, newProductSold);
+        values.put(ProductEntry.COLUMN_PRODUCT_SOLD_PROFIT, newProductProfit);
+        Uri currentProductUri = ContentUris.withAppendedId(ProductEntry.CONTENT_URI, mProductId);
+        context.getContentResolver().update(currentProductUri, values, null, null);
+        context.getContentResolver().notifyChange(ProductEntry.CONTENT_URI, null);
     }
 }

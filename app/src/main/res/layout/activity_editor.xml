@@ -27,6 +27,7 @@
 
             <ImageView
                 android:layout_width="32dp"
+                android:id="@+id/take_picture"
                 android:layout_height="32dp"
                 android:layout_alignParentBottom="true"
                 android:layout_alignParentEnd="true"
